@@ -80,35 +80,8 @@ public class Main {
     }
 
     static void playGame() {
-        deck.clear();
-        String[] colors = { "R", "Y", "G", "B" };
-        for (int c = 0; c < colors.length; c++) {
-            deck.add(colors[c] + "0");
-            for (int n = 1; n <= 9; n++) {
-                deck.add(colors[c] + n);
-                deck.add(colors[c] + n);
-            }
-            deck.add(colors[c] + "S");
-            deck.add(colors[c] + "S");
-            deck.add(colors[c] + "R");
-            deck.add(colors[c] + "R");
-            deck.add(colors[c] + "+2");
-            deck.add(colors[c] + "+2");
-        }
-        for (int i = 0; i < 4; i++) {
-            deck.add("W");
-            deck.add("W4");
-        }
-        Collections.shuffle(deck, random);
-        discard.clear();
-        for (int i = 0; i < hands.size(); i++) {
-            hands.get(i).clear();
-        }
-        for (int i = 0; i < playerNames.size(); i++) {
-            for (int j = 0; j < 7; j++) {
-                hands.get(i).add(draw());
-            }
-        }
+        buildDeck();
+        dealHands();
         upCard = draw();
         while (upCard.startsWith("W")) {
             discard.add(upCard);
@@ -186,51 +159,95 @@ public class Main {
                 }
 
                 if (hand.size() == 0) {
-                    int points = 0;
-                    for (int i = 0; i < hands.size(); i++) {
-                        if (i != currentPlayer) {
-                            for (int j = 0; j < hands.get(i).size(); j++) {
-                                points += CardRules.points(hands.get(i).get(j));
-                            }
-                        }
-                    }
+                    int points = calculateScore();
                     scores[currentPlayer] += points;
                     view.showWin(name, points);
                     return;
                 }
 
-                if (CardRules.rank(card).equals("SKIP")) {
-                    next();
-                    next();
-                } else if (CardRules.rank(card).equals("REVERSE")) {
-                    direction = direction * -1;
-                    if (playerNames.size() == 2) {
-                        next();
-                        next();
-                    } else {
-                        next();
-                    }
-                } else if (CardRules.rank(card).equals("DRAW_TWO")) {
-                    next();
-                    hands.get(currentPlayer).add(draw());
-                    hands.get(currentPlayer).add(draw());
-                    view.showDrawTwo(playerNames.get(currentPlayer));
-                    next();
-                } else if (CardRules.rank(card).equals("WILD_DRAW_FOUR")) {
-                    next();
-                    for (int i = 0; i < 4; i++) {
-                        hands.get(currentPlayer).add(draw());
-                    }
-                    view.showDrawFour(playerNames.get(currentPlayer));
-                    next();
-                } else {
-                    next();
-                }
+                applyCardEffect(card);
             } else {
                 next();
             }
         }
         view.showSafetyLimit();
+    }
+
+    static void buildDeck() {
+        deck.clear();
+        String[] colors = { "R", "Y", "G", "B" };
+        for (int c = 0; c < colors.length; c++) {
+            deck.add(colors[c] + "0");
+            for (int n = 1; n <= 9; n++) {
+                deck.add(colors[c] + n);
+                deck.add(colors[c] + n);
+            }
+            deck.add(colors[c] + "S");
+            deck.add(colors[c] + "S");
+            deck.add(colors[c] + "R");
+            deck.add(colors[c] + "R");
+            deck.add(colors[c] + "+2");
+            deck.add(colors[c] + "+2");
+        }
+        for (int i = 0; i < 4; i++) {
+            deck.add("W");
+            deck.add("W4");
+        }
+        Collections.shuffle(deck, random);
+        discard.clear();
+    }
+
+    static void dealHands() {
+        for (int i = 0; i < hands.size(); i++) {
+            hands.get(i).clear();
+        }
+        for (int i = 0; i < playerNames.size(); i++) {
+            for (int j = 0; j < 7; j++) {
+                hands.get(i).add(draw());
+            }
+        }
+    }
+
+    static int calculateScore() {
+        int points = 0;
+        for (int i = 0; i < hands.size(); i++) {
+            if (i != currentPlayer) {
+                for (int j = 0; j < hands.get(i).size(); j++) {
+                    points += CardRules.points(hands.get(i).get(j));
+                }
+            }
+        }
+        return points;
+    }
+
+    static void applyCardEffect(String card) {
+        if (CardRules.rank(card).equals("SKIP")) {
+            next();
+            next();
+        } else if (CardRules.rank(card).equals("REVERSE")) {
+            direction = direction * -1;
+            if (playerNames.size() == 2) {
+                next();
+                next();
+            } else {
+                next();
+            }
+        } else if (CardRules.rank(card).equals("DRAW_TWO")) {
+            next();
+            hands.get(currentPlayer).add(draw());
+            hands.get(currentPlayer).add(draw());
+            view.showDrawTwo(playerNames.get(currentPlayer));
+            next();
+        } else if (CardRules.rank(card).equals("WILD_DRAW_FOUR")) {
+            next();
+            for (int i = 0; i < 4; i++) {
+                hands.get(currentPlayer).add(draw());
+            }
+            view.showDrawFour(playerNames.get(currentPlayer));
+            next();
+        } else {
+            next();
+        }
     }
 
     static String draw() {
