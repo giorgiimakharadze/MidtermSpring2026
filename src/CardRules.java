@@ -1,7 +1,4 @@
-/**
- * Centralizes all card-related rules and utility methods.
- * Extracted from Main to reduce duplication and separate rule logic from game flow.
- */
+// Centralizes all card-related rules and utility methods.
 public class CardRules {
 
     static String color(String card) {
