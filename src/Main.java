@@ -145,7 +145,7 @@ public class Main {
                 if (!quiet) {
                     System.out.println(name + " draws " + drawn);
                 }
-                if (isLegal(drawn, upCard, calledColor)) {
+                if (CardRules.isLegal(drawn, upCard, calledColor)) {
                     if (!humanPlayers.get(currentPlayer).booleanValue()) {
                         chosen = hand.size() - 1;
                     } else {
@@ -169,23 +169,7 @@ public class Main {
                 }
 
                 String card = hand.get(chosen);
-                boolean ok = false;
-                String cardColor = color(card);
-                String upColor = color(upCard);
-                String cardRank = rank(card);
-                String upRank = rank(upCard);
-
-                if (card.startsWith("W")) {
-                    ok = true;
-                } else if (cardColor.equals(upColor)) {
-                    ok = true;
-                } else if (!calledColor.equals("") && cardColor.equals(calledColor)) {
-                    ok = true;
-                } else if (cardRank.equals(upRank) && !cardRank.equals("NUMBER")) {
-                    ok = true;
-                } else if (cardRank.equals("NUMBER") && upRank.equals("NUMBER") && number(card) == number(upCard)) {
-                    ok = true;
-                }
+                boolean ok = CardRules.isLegal(card, upCard, calledColor);
 
                 if (!ok) {
                     if (!quiet) {
@@ -224,7 +208,7 @@ public class Main {
                     for (int i = 0; i < hands.size(); i++) {
                         if (i != currentPlayer) {
                             for (int j = 0; j < hands.get(i).size(); j++) {
-                                points += points(hands.get(i).get(j));
+                                points += CardRules.points(hands.get(i).get(j));
                             }
                         }
                     }
@@ -235,10 +219,10 @@ public class Main {
                     return;
                 }
 
-                if (rank(card).equals("SKIP")) {
+                if (CardRules.rank(card).equals("SKIP")) {
                     next();
                     next();
-                } else if (rank(card).equals("REVERSE")) {
+                } else if (CardRules.rank(card).equals("REVERSE")) {
                     direction = direction * -1;
                     if (playerNames.size() == 2) {
                         next();
@@ -246,7 +230,7 @@ public class Main {
                     } else {
                         next();
                     }
-                } else if (rank(card).equals("DRAW_TWO")) {
+                } else if (CardRules.rank(card).equals("DRAW_TWO")) {
                     next();
                     hands.get(currentPlayer).add(draw());
                     hands.get(currentPlayer).add(draw());
@@ -254,7 +238,7 @@ public class Main {
                         System.out.println(playerNames.get(currentPlayer) + " draws two.");
                     }
                     next();
-                } else if (rank(card).equals("WILD_DRAW_FOUR")) {
+                } else if (CardRules.rank(card).equals("WILD_DRAW_FOUR")) {
                     next();
                     for (int i = 0; i < 4; i++) {
                         hands.get(currentPlayer).add(draw());
@@ -290,52 +274,19 @@ public class Main {
     static int chooseBotCard(ArrayList<String> hand) {
         for (int i = 0; i < hand.size(); i++) {
             String card = hand.get(i);
-            boolean ok = false;
-            if (card.startsWith("W"))
-                ok = true;
-            else if (color(card).equals(color(upCard)))
-                ok = true;
-            else if (!calledColor.equals("") && color(card).equals(calledColor))
-                ok = true;
-            else if (rank(card).equals(rank(upCard)) && !rank(card).equals("NUMBER"))
-                ok = true;
-            else if (rank(card).equals("NUMBER") && rank(upCard).equals("NUMBER") && number(card) == number(upCard))
-                ok = true;
-            if (rank(card).equals("DRAW_TWO") && ok) {
+            if (CardRules.isLegal(card, upCard, calledColor) && CardRules.rank(card).equals("DRAW_TWO")) {
                 return i;
             }
         }
         for (int i = 0; i < hand.size(); i++) {
             String card = hand.get(i);
-            boolean ok = false;
-            if (card.startsWith("W"))
-                ok = true;
-            else if (color(card).equals(color(upCard)))
-                ok = true;
-            else if (!calledColor.equals("") && color(card).equals(calledColor))
-                ok = true;
-            else if (rank(card).equals(rank(upCard)) && !rank(card).equals("NUMBER"))
-                ok = true;
-            else if (rank(card).equals("NUMBER") && rank(upCard).equals("NUMBER") && number(card) == number(upCard))
-                ok = true;
-            if (rank(card).equals("SKIP") && ok) {
+            if (CardRules.isLegal(card, upCard, calledColor) && CardRules.rank(card).equals("SKIP")) {
                 return i;
             }
         }
         for (int i = 0; i < hand.size(); i++) {
             String card = hand.get(i);
-            boolean ok = false;
-            if (card.startsWith("W"))
-                ok = true;
-            else if (color(card).equals(color(upCard)))
-                ok = true;
-            else if (!calledColor.equals("") && color(card).equals(calledColor))
-                ok = true;
-            else if (rank(card).equals(rank(upCard)) && !rank(card).equals("NUMBER"))
-                ok = true;
-            else if (rank(card).equals("NUMBER") && rank(upCard).equals("NUMBER") && number(card) == number(upCard))
-                ok = true;
-            if (rank(card).equals("NUMBER") && ok) {
+            if (CardRules.isLegal(card, upCard, calledColor) && CardRules.rank(card).equals("NUMBER")) {
                 return i;
             }
         }
@@ -363,7 +314,7 @@ public class Main {
             }
             for (int i = 0; i < hand.size(); i++) {
                 if (hand.get(i).equals(input)) {
-                    if (isLegal(hand.get(i), upCard, calledColor)) {
+                    if (CardRules.isLegal(hand.get(i), upCard, calledColor)) {
                         return i;
                     }
                     System.out.println("That card is not legal.");
@@ -399,7 +350,7 @@ public class Main {
         int g = 0;
         int b = 0;
         for (int i = 0; i < hand.size(); i++) {
-            String c = color(hand.get(i));
+            String c = CardRules.color(hand.get(i));
             if (c.equals("R")) {
                 r++;
             } else if (c.equals("Y")) {
@@ -421,80 +372,7 @@ public class Main {
         }
     }
 
-    static boolean isLegal(String card, String up, String call) {
-        if (card.startsWith("W")) {
-            return true;
-        }
-        if (color(card).equals(color(up))) {
-            return true;
-        }
-        if (!call.equals("") && color(card).equals(call)) {
-            return true;
-        }
-        if (rank(card).equals(rank(up)) && !rank(card).equals("NUMBER")) {
-            return true;
-        }
-        if (rank(card).equals("NUMBER") && rank(up).equals("NUMBER") && number(card) == number(up)) {
-            return true;
-        }
-        return false;
-    }
-
-    static String color(String card) {
-        if (card.startsWith("R")) {
-            return "R";
-        }
-        if (card.startsWith("Y")) {
-            return "Y";
-        }
-        if (card.startsWith("G")) {
-            return "G";
-        }
-        if (card.startsWith("B")) {
-            return "B";
-        }
-        return "";
-    }
-
-    static String rank(String card) {
-        if (card.equals("W")) {
-            return "WILD";
-        }
-        if (card.equals("W4")) {
-            return "WILD_DRAW_FOUR";
-        }
-        if (card.endsWith("S")) {
-            return "SKIP";
-        }
-        if (card.endsWith("R")) {
-            return "REVERSE";
-        }
-        if (card.endsWith("+2")) {
-            return "DRAW_TWO";
-        }
-        return "NUMBER";
-    }
-
-    static int number(String card) {
-        if (rank(card).equals("NUMBER")) {
-            return Integer.parseInt(card.substring(1));
-        }
-        return -1;
-    }
-
-    static int points(String card) {
-        String r = rank(card);
-        if (r.equals("NUMBER")) {
-            return number(card);
-        }
-        if (r.equals("SKIP") || r.equals("REVERSE") || r.equals("DRAW_TWO")) {
-            return 20;
-        }
-        if (r.equals("WILD") || r.equals("WILD_DRAW_FOUR")) {
-            return 50;
-        }
-        return 0;
-    }
+    // Card utility methods now live in CardRules class
 
     static void next() {
         currentPlayer += direction;
@@ -519,31 +397,31 @@ public class Main {
 
     static void selfTest() {
         int passed = 0;
-        if (color("R5").equals("R"))
+        if (CardRules.color("R5").equals("R"))
             passed++;
         else
             fail("color R5");
-        if (rank("G+2").equals("DRAW_TWO"))
+        if (CardRules.rank("G+2").equals("DRAW_TWO"))
             passed++;
         else
             fail("rank +2");
-        if (points("W4") == 50)
+        if (CardRules.points("W4") == 50)
             passed++;
         else
             fail("wild points");
-        if (isLegal("R2", "R9", ""))
+        if (CardRules.isLegal("R2", "R9", ""))
             passed++;
         else
             fail("same color");
-        if (isLegal("G9", "R9", ""))
+        if (CardRules.isLegal("G9", "R9", ""))
             passed++;
         else
             fail("same number");
-        if (isLegal("B3", "W", "B"))
+        if (CardRules.isLegal("B3", "W", "B"))
             passed++;
         else
             fail("called color");
-        if (!isLegal("B3", "R9", ""))
+        if (!CardRules.isLegal("B3", "R9", ""))
             passed++;
         else
             fail("illegal mismatch");
@@ -569,117 +447,117 @@ public class Main {
             fail("bot color");
 
         // Match by action type
-        if (isLegal("RS", "GS", ""))
+        if (CardRules.isLegal("RS", "GS", ""))
             passed++;
         else
             fail("skip on skip");
-        if (isLegal("BR", "GR", ""))
+        if (CardRules.isLegal("BR", "GR", ""))
             passed++;
         else
             fail("reverse on reverse");
-        if (isLegal("R+2", "G+2", ""))
+        if (CardRules.isLegal("R+2", "G+2", ""))
             passed++;
         else
             fail("draw two on draw two");
 
         // Wild and wild draw four always legal
-        if (isLegal("W", "R5", ""))
+        if (CardRules.isLegal("W", "R5", ""))
             passed++;
         else
             fail("wild on number");
-        if (isLegal("W4", "G3", ""))
+        if (CardRules.isLegal("W4", "G3", ""))
             passed++;
         else
             fail("w4 on number");
-        if (isLegal("W", "BS", ""))
+        if (CardRules.isLegal("W", "BS", ""))
             passed++;
         else
             fail("wild on action");
-        if (isLegal("W4", "YR", ""))
+        if (CardRules.isLegal("W4", "YR", ""))
             passed++;
         else
             fail("w4 on reverse");
 
         // Called color after wild
-        if (isLegal("R3", "W", "R"))
+        if (CardRules.isLegal("R3", "W", "R"))
             passed++;
         else
             fail("match called color after wild");
-        if (!isLegal("G3", "W", "R"))
+        if (!CardRules.isLegal("G3", "W", "R"))
             passed++;
         else
             fail("wrong called color after wild");
-        if (isLegal("B7", "W4", "B"))
+        if (CardRules.isLegal("B7", "W4", "B"))
             passed++;
         else
             fail("match called color after w4");
 
         // Illegal plays
-        if (!isLegal("G7", "R5", ""))
+        if (!CardRules.isLegal("G7", "R5", ""))
             passed++;
         else
             fail("different color and number");
-        if (!isLegal("RS", "G5", ""))
+        if (!CardRules.isLegal("RS", "G5", ""))
             passed++;
         else
             fail("skip not matching color or type");
 
         // Scoring
-        if (points("R0") == 0)
+        if (CardRules.points("R0") == 0)
             passed++;
         else
             fail("points R0");
-        if (points("R5") == 5)
+        if (CardRules.points("R5") == 5)
             passed++;
         else
             fail("points R5");
-        if (points("B9") == 9)
+        if (CardRules.points("B9") == 9)
             passed++;
         else
             fail("points B9");
-        if (points("RS") == 20)
+        if (CardRules.points("RS") == 20)
             passed++;
         else
             fail("points skip");
-        if (points("GR") == 20)
+        if (CardRules.points("GR") == 20)
             passed++;
         else
             fail("points reverse");
-        if (points("B+2") == 20)
+        if (CardRules.points("B+2") == 20)
             passed++;
         else
             fail("points draw two");
 
         // Color and rank extraction
-        if (color("W").equals(""))
+        if (CardRules.color("W").equals(""))
             passed++;
         else
             fail("wild has no color");
-        if (color("W4").equals(""))
+        if (CardRules.color("W4").equals(""))
             passed++;
         else
             fail("w4 has no color");
-        if (rank("RS").equals("SKIP"))
+        if (CardRules.rank("RS").equals("SKIP"))
             passed++;
         else
             fail("rank skip");
-        if (rank("GR").equals("REVERSE"))
+        if (CardRules.rank("GR").equals("REVERSE"))
             passed++;
         else
             fail("rank reverse");
-        if (rank("B5").equals("NUMBER"))
+        if (CardRules.rank("B5").equals("NUMBER"))
             passed++;
         else
             fail("rank number");
-        if (number("R0") == 0)
+        if (CardRules.number("R0") == 0)
             passed++;
         else
             fail("number R0");
-        if (number("G9") == 9)
+        if (CardRules.number("G9") == 9)
             passed++;
         else
             fail("number G9");
-        if (number("RS") == -1)
+        if (CardRules.number("RS") == -1)
             passed++;
         else
             fail("number of skip");
