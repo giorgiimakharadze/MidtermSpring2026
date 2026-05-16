@@ -5,18 +5,8 @@ import java.util.Random;
 import java.util.Scanner;
 
 public class Main {
-    static ArrayList<String> playerNames = new ArrayList<String>();
-    static ArrayList<Boolean> humanPlayers = new ArrayList<Boolean>();
-    static ArrayList<ArrayList<String>> hands = new ArrayList<ArrayList<String>>();
-    static ArrayList<String> deck = new ArrayList<String>();
-    static ArrayList<String> discard = new ArrayList<String>();
-    static int[] scores = new int[10];
-    static int currentPlayer = 0;
-    static int direction = 1;
-    static String upCard = "";
-    static String calledColor = "";
+    static GameState gs = new GameState();
     static boolean quiet = false;
-    static Random random = new Random();
     static Scanner scanner = new Scanner(System.in);
     static GameView view;
 
@@ -46,11 +36,11 @@ public class Main {
             }
         }
 
-        random = new Random(seed);
+        gs.setRandom(new Random(seed));
         view = new GameView(quiet, scanner);
-        setupPlayers(bots, human);
+        gs.setupPlayers(bots, human);
 
-        if (playerNames.size() < 2 || playerNames.size() > 4) {
+        if (gs.getPlayerCount() < 2 || gs.getPlayerCount() > 4) {
             view.showPlayerCount();
             return;
         }
@@ -60,58 +50,41 @@ public class Main {
             playGame();
         }
 
-        view.showFinalScores(playerNames, scores);
-    }
-
-    static void setupPlayers(int bots, boolean human) {
-        playerNames.clear();
-        humanPlayers.clear();
-        hands.clear();
-        if (human) {
-            playerNames.add("You");
-            humanPlayers.add(Boolean.TRUE);
-            hands.add(new ArrayList<String>());
-        }
-        for (int i = 1; i <= bots; i++) {
-            playerNames.add("Bot" + i);
-            humanPlayers.add(Boolean.FALSE);
-            hands.add(new ArrayList<String>());
-        }
+        view.showFinalScores(gs.getPlayerNames(), gs.getScores());
     }
 
     static void playGame() {
-        buildDeck();
-        dealHands();
-        upCard = draw();
-        while (upCard.startsWith("W")) {
-            discard.add(upCard);
-            upCard = draw();
+        gs.buildDeck();
+        gs.dealHands();
+        gs.setUpCard(gs.draw());
+        while (gs.getUpCard().startsWith("W")) {
+            gs.addToDiscard(gs.getUpCard());
+            gs.setUpCard(gs.draw());
         }
-        calledColor = "";
-        direction = 1;
-        currentPlayer = random.nextInt(playerNames.size());
+        gs.setCalledColor("");
+        gs.resetForNewGame();
 
         int guard = 0;
         while (guard < 3000) {
             guard++;
-            String name = playerNames.get(currentPlayer);
-            ArrayList<String> hand = hands.get(currentPlayer);
+            String name = gs.currentPlayerName();
+            ArrayList<String> hand = gs.currentHand();
 
-            view.showTurnState(upCard, calledColor, name, hand);
+            view.showTurnState(gs.getUpCard(), gs.getCalledColor(), name, hand);
 
             int chosen = -1;
-            if (humanPlayers.get(currentPlayer).booleanValue()) {
-                chosen = view.askHumanCard(hand, upCard, calledColor);
+            if (gs.isCurrentPlayerHuman()) {
+                chosen = view.askHumanCard(hand, gs.getUpCard(), gs.getCalledColor());
             } else {
-                chosen = BotStrategy.chooseCard(hand, upCard, calledColor);
+                chosen = BotStrategy.chooseCard(hand, gs.getUpCard(), gs.getCalledColor());
             }
 
             if (chosen == -1) {
-                String drawn = draw();
+                String drawn = gs.draw();
                 hand.add(drawn);
                 view.showDraw(name, drawn);
-                if (CardRules.isLegal(drawn, upCard, calledColor)) {
-                    if (!humanPlayers.get(currentPlayer).booleanValue()) {
+                if (CardRules.isLegal(drawn, gs.getUpCard(), gs.getCalledColor())) {
+                    if (!gs.isCurrentPlayerHuman()) {
                         chosen = hand.size() - 1;
                     } else {
                         if (view.askPlayDrawnCard(drawn)) {
@@ -124,34 +97,34 @@ public class Main {
             if (chosen >= 0) {
                 if (chosen >= hand.size()) {
                     view.showInvalidIndex(name);
-                    hand.add(draw());
-                    next();
+                    hand.add(gs.draw());
+                    gs.next();
                     continue;
                 }
 
                 String card = hand.get(chosen);
-                boolean ok = CardRules.isLegal(card, upCard, calledColor);
+                boolean ok = CardRules.isLegal(card, gs.getUpCard(), gs.getCalledColor());
 
                 if (!ok) {
                     view.showPenalty(name, card);
-                    hand.add(draw());
-                    next();
+                    hand.add(gs.draw());
+                    gs.next();
                     continue;
                 }
 
                 hand.remove(chosen);
-                discard.add(upCard);
-                upCard = card;
-                calledColor = "";
+                gs.addToDiscard(gs.getUpCard());
+                gs.setUpCard(card);
+                gs.setCalledColor("");
                 view.showPlay(name, card);
 
                 if (card.equals("W") || card.equals("W4")) {
-                    if (humanPlayers.get(currentPlayer).booleanValue()) {
-                        calledColor = view.askColor();
+                    if (gs.isCurrentPlayerHuman()) {
+                        gs.setCalledColor(view.askColor());
                     } else {
-                        calledColor = BotStrategy.chooseColor(hand);
+                        gs.setCalledColor(BotStrategy.chooseColor(hand));
                     }
-                    view.showColorCall(name, calledColor);
+                    view.showColorCall(name, gs.getCalledColor());
                 }
 
                 if (hand.size() == 1) {
@@ -159,120 +132,47 @@ public class Main {
                 }
 
                 if (hand.size() == 0) {
-                    int points = calculateScore();
-                    scores[currentPlayer] += points;
+                    int points = gs.calculateScore();
+                    gs.addScore(gs.getCurrentPlayer(), points);
                     view.showWin(name, points);
                     return;
                 }
 
                 applyCardEffect(card);
             } else {
-                next();
+                gs.next();
             }
         }
         view.showSafetyLimit();
     }
 
-    static void buildDeck() {
-        deck.clear();
-        String[] colors = { "R", "Y", "G", "B" };
-        for (int c = 0; c < colors.length; c++) {
-            deck.add(colors[c] + "0");
-            for (int n = 1; n <= 9; n++) {
-                deck.add(colors[c] + n);
-                deck.add(colors[c] + n);
-            }
-            deck.add(colors[c] + "S");
-            deck.add(colors[c] + "S");
-            deck.add(colors[c] + "R");
-            deck.add(colors[c] + "R");
-            deck.add(colors[c] + "+2");
-            deck.add(colors[c] + "+2");
-        }
-        for (int i = 0; i < 4; i++) {
-            deck.add("W");
-            deck.add("W4");
-        }
-        Collections.shuffle(deck, random);
-        discard.clear();
-    }
-
-    static void dealHands() {
-        for (int i = 0; i < hands.size(); i++) {
-            hands.get(i).clear();
-        }
-        for (int i = 0; i < playerNames.size(); i++) {
-            for (int j = 0; j < 7; j++) {
-                hands.get(i).add(draw());
-            }
-        }
-    }
-
-    static int calculateScore() {
-        int points = 0;
-        for (int i = 0; i < hands.size(); i++) {
-            if (i != currentPlayer) {
-                for (int j = 0; j < hands.get(i).size(); j++) {
-                    points += CardRules.points(hands.get(i).get(j));
-                }
-            }
-        }
-        return points;
-    }
-
     static void applyCardEffect(String card) {
         if (CardRules.rank(card).equals("SKIP")) {
-            next();
-            next();
+            gs.next();
+            gs.next();
         } else if (CardRules.rank(card).equals("REVERSE")) {
-            direction = direction * -1;
-            if (playerNames.size() == 2) {
-                next();
-                next();
+            gs.reverseDirection();
+            if (gs.getPlayerCount() == 2) {
+                gs.next();
+                gs.next();
             } else {
-                next();
+                gs.next();
             }
         } else if (CardRules.rank(card).equals("DRAW_TWO")) {
-            next();
-            hands.get(currentPlayer).add(draw());
-            hands.get(currentPlayer).add(draw());
-            view.showDrawTwo(playerNames.get(currentPlayer));
-            next();
+            gs.next();
+            gs.currentHand().add(gs.draw());
+            gs.currentHand().add(gs.draw());
+            view.showDrawTwo(gs.currentPlayerName());
+            gs.next();
         } else if (CardRules.rank(card).equals("WILD_DRAW_FOUR")) {
-            next();
+            gs.next();
             for (int i = 0; i < 4; i++) {
-                hands.get(currentPlayer).add(draw());
+                gs.currentHand().add(gs.draw());
             }
-            view.showDrawFour(playerNames.get(currentPlayer));
-            next();
+            view.showDrawFour(gs.currentPlayerName());
+            gs.next();
         } else {
-            next();
-        }
-    }
-
-    static String draw() {
-        if (deck.size() == 0) {
-            deck.addAll(discard);
-            discard.clear();
-            Collections.shuffle(deck, random);
-        }
-        if (deck.size() == 0) {
-            return "W";
-        }
-        return deck.remove(0);
-    }
-
-    // Bot logic now lives in BotStrategy class
-
-    // Card utility methods now live in CardRules class
-
-    static void next() {
-        currentPlayer += direction;
-        if (currentPlayer >= playerNames.size()) {
-            currentPlayer = 0;
-        }
-        if (currentPlayer < 0) {
-            currentPlayer = playerNames.size() - 1;
+            gs.next();
         }
     }
 
@@ -311,8 +211,6 @@ public class Main {
         h.add("B3");
         h.add("R4");
         h.add("W");
-        upCard = "R9";
-        calledColor = "";
         if (BotStrategy.chooseCard(h, "R9", "") == 1)
             passed++;
         else
@@ -443,125 +341,85 @@ public class Main {
         else
             fail("number of skip");
 
-        // Save global state
-        ArrayList<String> savedNames = new ArrayList<String>(playerNames);
-        ArrayList<Boolean> savedHumans = new ArrayList<Boolean>(humanPlayers);
-        ArrayList<ArrayList<String>> savedHands = new ArrayList<ArrayList<String>>(hands);
-        ArrayList<String> savedDeck = new ArrayList<String>(deck);
-        ArrayList<String> savedDiscard = new ArrayList<String>(discard);
-        int savedDir = direction;
-        int savedCurrent = currentPlayer;
-        String savedUp = upCard;
-        String savedCall = calledColor;
-
-        // next player is skipped
-        playerNames.clear();
-        humanPlayers.clear();
-        hands.clear();
-        playerNames.add("A");
-        playerNames.add("B");
-        playerNames.add("C");
-        humanPlayers.add(false);
-        humanPlayers.add(false);
-        humanPlayers.add(false);
-        hands.add(new ArrayList<String>());
-        hands.add(new ArrayList<String>());
-        hands.add(new ArrayList<String>());
-        direction = 1;
-        currentPlayer = 0;
-        next();
-        next(); // skip advances past next player
-        if (currentPlayer == 2)
+        // skip advances past next player
+        GameState ts = new GameState();
+        ts.addPlayer("A", false);
+        ts.addPlayer("B", false);
+        ts.addPlayer("C", false);
+        ts.next();
+        ts.next();
+        if (ts.getCurrentPlayer() == 2)
             passed++;
         else
             fail("skip effect skips next player");
 
         // direction changes
-        direction = 1;
-        currentPlayer = 0;
-        direction = direction * -1;
-        next();
-        if (currentPlayer == 2 && direction == -1)
+        GameState ts2 = new GameState();
+        ts2.addPlayer("A", false);
+        ts2.addPlayer("B", false);
+        ts2.addPlayer("C", false);
+        ts2.reverseDirection();
+        ts2.next();
+        if (ts2.getCurrentPlayer() == 2 && ts2.getDirection() == -1)
             passed++;
         else
             fail("reverse changes direction");
 
         // Reverse with 2 players acts like skip
-        playerNames.clear();
-        humanPlayers.clear();
-        hands.clear();
-        playerNames.add("A");
-        playerNames.add("B");
-        humanPlayers.add(false);
-        humanPlayers.add(false);
-        hands.add(new ArrayList<String>());
-        hands.add(new ArrayList<String>());
-        direction = 1;
-        currentPlayer = 0;
-        direction = direction * -1;
-        next();
-        next(); // reverse + 2 players = skip
-        if (currentPlayer == 0)
+        GameState ts3 = new GameState();
+        ts3.addPlayer("A", false);
+        ts3.addPlayer("B", false);
+        ts3.reverseDirection();
+        ts3.next();
+        ts3.next();
+        if (ts3.getCurrentPlayer() == 0)
             passed++;
         else
             fail("reverse with 2 players acts like skip");
 
         // next player gets 2 cards and is skipped
-        playerNames.clear();
-        humanPlayers.clear();
-        hands.clear();
-        playerNames.add("A");
-        playerNames.add("B");
-        playerNames.add("C");
-        humanPlayers.add(false);
-        humanPlayers.add(false);
-        humanPlayers.add(false);
-        hands.add(new ArrayList<String>());
-        hands.add(new ArrayList<String>());
-        hands.add(new ArrayList<String>());
-        deck.clear();
-        deck.add("R1");
-        deck.add("G2");
-        deck.add("B3");
-        direction = 1;
-        currentPlayer = 0;
-        next(); // move to player 1 (the victim)
-        hands.get(currentPlayer).add(draw());
-        hands.get(currentPlayer).add(draw());
-        if (hands.get(1).size() == 2)
+        GameState ts4 = new GameState();
+        ts4.addPlayer("A", false);
+        ts4.addPlayer("B", false);
+        ts4.addPlayer("C", false);
+        ts4.addToDeck("R1");
+        ts4.addToDeck("G2");
+        ts4.addToDeck("B3");
+        ts4.next();
+        ts4.getHand(ts4.getCurrentPlayer()).add(ts4.draw());
+        ts4.getHand(ts4.getCurrentPlayer()).add(ts4.draw());
+        if (ts4.getHand(1).size() == 2)
             passed++;
         else
             fail("draw two adds 2 cards");
-        next(); // skip player 1's turn, move to player 2
-        if (currentPlayer == 2)
+        ts4.next();
+        if (ts4.getCurrentPlayer() == 2)
             passed++;
         else
             fail("draw two skips victim");
 
         // Drawing from deck
-        deck.clear();
-        deck.add("Y7");
-        String drawn = draw();
+        GameState ts5 = new GameState();
+        ts5.addToDeck("Y7");
+        String drawn = ts5.draw();
         if (drawn.equals("Y7"))
             passed++;
         else
             fail("draw from deck");
 
         // Reshuffle when deck empty
-        deck.clear();
-        discard.clear();
-        discard.add("R1");
-        discard.add("G2");
-        String reshuffled = draw();
+        GameState ts6 = new GameState();
+        ts6.addToDiscard("R1");
+        ts6.addToDiscard("G2");
+        String reshuffled = ts6.draw();
         if (reshuffled.equals("R1") || reshuffled.equals("G2"))
             passed++;
         else
             fail("reshuffle from discard");
 
         // Fallback wild when both piles empty
-        deck.clear();
-        discard.clear();
-        String fallback = draw();
+        GameState ts7 = new GameState();
+        String fallback = ts7.draw();
         if (fallback.equals("W"))
             passed++;
         else
@@ -571,8 +429,6 @@ public class Main {
         ArrayList<String> noMatch = new ArrayList<String>();
         noMatch.add("B1");
         noMatch.add("G2");
-        upCard = "R9";
-        calledColor = "";
         if (BotStrategy.chooseCard(noMatch, "R9", "") == -1)
             passed++;
         else
@@ -583,8 +439,6 @@ public class Main {
         h3.add("R5");
         h3.add("R+2");
         h3.add("W");
-        upCard = "R9";
-        calledColor = "";
         if (BotStrategy.chooseCard(h3, "R9", "") == 1)
             passed++;
         else
@@ -595,28 +449,10 @@ public class Main {
         h4.add("R5");
         h4.add("RS");
         h4.add("W");
-        upCard = "R9";
-        calledColor = "";
         if (BotStrategy.chooseCard(h4, "R9", "") == 1)
             passed++;
         else
             fail("bot prioritizes skip");
-
-        // Restore global state
-        playerNames.clear();
-        playerNames.addAll(savedNames);
-        humanPlayers.clear();
-        humanPlayers.addAll(savedHumans);
-        hands.clear();
-        hands.addAll(savedHands);
-        deck.clear();
-        deck.addAll(savedDeck);
-        discard.clear();
-        discard.addAll(savedDiscard);
-        direction = savedDir;
-        currentPlayer = savedCurrent;
-        upCard = savedUp;
-        calledColor = savedCall;
 
         System.out.println("Passed " + passed + " characterization checks.");
     }
