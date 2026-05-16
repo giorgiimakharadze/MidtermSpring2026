@@ -103,7 +103,7 @@ public class Main {
             if (humanPlayers.get(currentPlayer).booleanValue()) {
                 chosen = view.askHumanCard(hand, upCard, calledColor);
             } else {
-                chosen = chooseBotCard(hand);
+                chosen = BotStrategy.chooseCard(hand, upCard, calledColor);
             }
 
             if (chosen == -1) {
@@ -149,7 +149,7 @@ public class Main {
                     if (humanPlayers.get(currentPlayer).booleanValue()) {
                         calledColor = view.askColor();
                     } else {
-                        calledColor = chooseBotColor(hand);
+                        calledColor = BotStrategy.chooseColor(hand);
                     }
                     view.showColorCall(name, calledColor);
                 }
@@ -262,62 +262,7 @@ public class Main {
         return deck.remove(0);
     }
 
-    static int chooseBotCard(ArrayList<String> hand) {
-        for (int i = 0; i < hand.size(); i++) {
-            String card = hand.get(i);
-            if (CardRules.isLegal(card, upCard, calledColor) && CardRules.rank(card).equals("DRAW_TWO")) {
-                return i;
-            }
-        }
-        for (int i = 0; i < hand.size(); i++) {
-            String card = hand.get(i);
-            if (CardRules.isLegal(card, upCard, calledColor) && CardRules.rank(card).equals("SKIP")) {
-                return i;
-            }
-        }
-        for (int i = 0; i < hand.size(); i++) {
-            String card = hand.get(i);
-            if (CardRules.isLegal(card, upCard, calledColor) && CardRules.rank(card).equals("NUMBER")) {
-                return i;
-            }
-        }
-        for (int i = 0; i < hand.size(); i++) {
-            if (hand.get(i).startsWith("W")) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    // Human input methods now live in GameView class
-
-    static String chooseBotColor(ArrayList<String> hand) {
-        int r = 0;
-        int y = 0;
-        int g = 0;
-        int b = 0;
-        for (int i = 0; i < hand.size(); i++) {
-            String c = CardRules.color(hand.get(i));
-            if (c.equals("R")) {
-                r++;
-            } else if (c.equals("Y")) {
-                y++;
-            } else if (c.equals("G")) {
-                g++;
-            } else if (c.equals("B")) {
-                b++;
-            }
-        }
-        if (r >= y && r >= g && r >= b) {
-            return "R";
-        } else if (y >= r && y >= g && y >= b) {
-            return "Y";
-        } else if (g >= r && g >= y && g >= b) {
-            return "G";
-        } else {
-            return "B";
-        }
-    }
+    // Bot logic now lives in BotStrategy class
 
     // Card utility methods now live in CardRules class
 
@@ -368,7 +313,7 @@ public class Main {
         h.add("W");
         upCard = "R9";
         calledColor = "";
-        if (chooseBotCard(h) == 1)
+        if (BotStrategy.chooseCard(h, "R9", "") == 1)
             passed++;
         else
             fail("bot normal before wild");
@@ -377,7 +322,7 @@ public class Main {
         h2.add("B1");
         h2.add("B2");
         h2.add("R3");
-        if (chooseBotColor(h2).equals("B"))
+        if (BotStrategy.chooseColor(h2).equals("B"))
             passed++;
         else
             fail("bot color");
@@ -628,7 +573,7 @@ public class Main {
         noMatch.add("G2");
         upCard = "R9";
         calledColor = "";
-        if (chooseBotCard(noMatch) == -1)
+        if (BotStrategy.chooseCard(noMatch, "R9", "") == -1)
             passed++;
         else
             fail("bot draws when no legal card");
@@ -640,7 +585,7 @@ public class Main {
         h3.add("W");
         upCard = "R9";
         calledColor = "";
-        if (chooseBotCard(h3) == 1)
+        if (BotStrategy.chooseCard(h3, "R9", "") == 1)
             passed++;
         else
             fail("bot prioritizes draw two");
@@ -652,7 +597,7 @@ public class Main {
         h4.add("W");
         upCard = "R9";
         calledColor = "";
-        if (chooseBotCard(h4) == 1)
+        if (BotStrategy.chooseCard(h4, "R9", "") == 1)
             passed++;
         else
             fail("bot prioritizes skip");
