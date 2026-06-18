@@ -53,13 +53,18 @@ Moved chooseBotCard() and chooseBotColor() into BotStrategy.java. Bot methods no
 
 ### Step 5: Extract GameState class
 
-Moved all mutable game state (playerNames, humanPlayers, hands, deck, discard, scores, currentPlayer, direction, upCard, calledColor) into GameState.java with private fields and accessor methods. Also moved state-manipulation methods (setupPlayers, buildDeck, dealHands, draw, next, calculateScore) into GameState. Main now holds only game orchestration and the test harness.
+Moved all mutable game state (playerNames, humanPlayers, hands, deck, discard, scores, currentPlayer, direction, upCard, calledColor) into GameState.java with private fields and accessor methods. Also moved state-manipulation methods (setupPlayers, buildDeck, dealHands, draw, next, calculateScore) into GameState.
+
+### Step 6: Extract CharacterizationTests class
+
+Moved the manual self-test harness and 46 characterization checks out of `Main.java` and into a dedicated `CharacterizationTests.java` class. Extracted the giant test method into clean, categorized test methods. `Main.java` now solely holds game orchestration.
 
 ## Final Class Structure
 
 | Class | Responsibility |
 |-------|---------------|
-| Main | Turn orchestration, CLI argument parsing, test harness |
+| Main | Turn orchestration, CLI argument parsing |
+| CharacterizationTests | Test harness and characterization checks |
 | GameState | All mutable game state and state-manipulation methods |
 | CardRules | Card rules: color, rank, number, points, legality |
 | GameView | All console output and human input |
@@ -83,5 +88,5 @@ No behavior changes were made during refactoring.
 ## Remaining Risks
 
 - Card representation is still primitive strings. A Card value object would prevent invalid card states.
-- Tests use a manual selfTest() pattern rather than a proper test framework.
+- Tests use a manual testing pattern rather than a proper test framework like JUnit.
 - applyCardEffect still lives in Main rather than in GameState, because it mixes state changes with view calls.
