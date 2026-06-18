@@ -1,1 +1,6 @@
 out/
+target/
+logs/
+*.iml
+.idea/
+.vscode/

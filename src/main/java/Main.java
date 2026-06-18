@@ -1,8 +1,11 @@
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Main {
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
     static GameState gs = new GameState();
     static boolean quiet = false;
     static Scanner scanner = new Scanner(System.in);
@@ -25,9 +28,6 @@ public class Main {
                 quiet = true;
             } else if (args[i].equals("--seed") && i + 1 < args.length) {
                 seed = Long.parseLong(args[++i]);
-            } else if (args[i].equals("--self-test")) {
-                CharacterizationTests.runAll();
-                return;
             } else if (args[i].equals("--help")) {
                 new GameView(false, scanner).showHelp();
                 return;
@@ -44,6 +44,7 @@ public class Main {
         }
 
         for (int g = 1; g <= games; g++) {
+            log.info("Starting game {} of {}", g, games);
             view.showGameHeader(g);
             playGame();
         }
@@ -80,6 +81,7 @@ public class Main {
             if (chosen == -1) {
                 String drawn = gs.draw();
                 hand.add(drawn);
+                log.info("{} drew a card", name);
                 view.showDraw(name, drawn);
                 if (CardRules.isLegal(drawn, gs.getUpCard(), gs.getCalledColor())) {
                     if (!gs.isCurrentPlayerHuman()) {
@@ -114,6 +116,7 @@ public class Main {
                 gs.addToDiscard(gs.getUpCard());
                 gs.setUpCard(card);
                 gs.setCalledColor("");
+                log.info("{} played {}", name, card);
                 view.showPlay(name, card);
 
                 if (card.equals("W") || card.equals("W4")) {
@@ -122,16 +125,19 @@ public class Main {
                     } else {
                         gs.setCalledColor(BotStrategy.chooseColor(hand));
                     }
+                    log.info("{} called color {}", name, gs.getCalledColor());
                     view.showColorCall(name, gs.getCalledColor());
                 }
 
                 if (hand.size() == 1) {
+                    log.info("{} called UNO!", name);
                     view.showUno(name);
                 }
 
                 if (hand.size() == 0) {
                     int points = gs.calculateScore();
                     gs.addScore(gs.getCurrentPlayer(), points);
+                    log.info("{} won the game with {} points!", name, points);
                     view.showWin(name, points);
                     return;
                 }

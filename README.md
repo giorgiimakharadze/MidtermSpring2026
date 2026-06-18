@@ -4,22 +4,38 @@ This is a standalone CLI UNO-like game.
 
 The code is written as plausible feature-grown Java: almost everything lives in one procedural `Main` class. It works, but it has mixed responsibilities, duplicated rule logic, primitive-heavy card handling, global state, and condition-heavy gameplay code. The goal is to refactor it safely, not rewrite it.
 
-## Compile
+## Build and Package
+
+This project uses Maven for building, testing, and packaging.
 
 ```bash
-scripts/compile.sh
+mvn clean package
 ```
 
-## Run Bot Games
+This will run the automated JUnit 5 tests and create an executable JAR file in `target/uno-game-1.0-SNAPSHOT-jar-with-dependencies.jar`.
+
+## Run Tests
+
+To run the characterization tests:
 
 ```bash
-scripts/run.sh --bots 3 --games 5 --quiet
+mvn test
 ```
 
-## Run Interactive Game
+## Run the Game
+
+Once packaged, you can run the executable JAR:
+
+### Run Bot Games
 
 ```bash
-scripts/run.sh --human --bots 2 --games 1
+java -jar target/uno-game-1.0-SNAPSHOT-jar-with-dependencies.jar --bots 3 --games 5 --quiet
+```
+
+### Run Interactive Game
+
+```bash
+java -jar target/uno-game-1.0-SNAPSHOT-jar-with-dependencies.jar --human --bots 2 --games 1
 ```
 
 Card input examples:
@@ -34,31 +50,29 @@ W4   wild draw four
 draw draw a card
 ```
 
-## Characterization Checks
+## Logging
+
+Gameplay events are logged using SLF4J and Logback to `logs/game.log`. Check this file to see detailed execution logs during or after gameplay.
+
+## Docker Support
+
+You can build and run the game using Docker.
+
+### Build Docker Image
 
 ```bash
-scripts/test.sh
+docker build -t uno-game .
 ```
 
-## Submission
+### Run via Docker
 
-Submit your work through GitHub:
+```bash
+# Interactive game
+docker run -it uno-game --human --bots 2 --games 1
 
-1. Fork this repository to your GitHub account.
-2. Clone your fork locally.
-3. Complete the midterm work in your fork.
-4. Commit your changes with clear commit messages.
-5. Push your branch to GitHub.
-6. Open a pull request from your fork back to the original repository.
-
-Your pull request must include:
-
-* refactored source code
-* characterization tests
-* `docs/refactoring-report.md`
-* `docs/extension-readiness.md`
-
-Do not submit a zip file instead of a pull request unless the instructor explicitly asks for it.
+# Bot only game
+docker run -it uno-game --bots 3 --games 5
+```
 
 ## Rules
 
