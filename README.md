@@ -78,6 +78,10 @@ docker run -it uno-game --bots 3 --games 5
 
 See `docs/rules.html` for the implemented game rules.
 
+## Persistence
+
+See `docs/database.md` for information on the database schema, history reporting, and persistence testing.
+
 ## Midterm Materials
 
 * `docs/midterm-exam.md`: midterm brief

@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS players (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS games (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP,
+    winner_id BIGINT,
+    FOREIGN KEY (winner_id) REFERENCES players(id)
+);
+
+CREATE TABLE IF NOT EXISTS rounds (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    game_id BIGINT NOT NULL,
+    round_number INT NOT NULL,
+    winner_id BIGINT,
+    end_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games(id),
+    FOREIGN KEY (winner_id) REFERENCES players(id)
+);
+
+CREATE TABLE IF NOT EXISTS scores (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    round_id BIGINT NOT NULL,
+    player_id BIGINT NOT NULL,
+    score INT NOT NULL,
+    FOREIGN KEY (round_id) REFERENCES rounds(id),
+    FOREIGN KEY (player_id) REFERENCES players(id)
+);

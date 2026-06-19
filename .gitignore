@@ -4,3 +4,5 @@ logs/
 *.iml
 .idea/
 .vscode/
+*.mv.db
+*.trace.db

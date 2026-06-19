@@ -10,6 +10,9 @@ public class Main {
     static boolean quiet = false;
     static Scanner scanner = new Scanner(System.in);
     static GameView view;
+    static persistence.GameRepository repo;
+    static persistence.Game dbGame;
+    static ArrayList<persistence.Player> dbPlayers;
 
     public static void main(String[] args) {
         int bots = 3;
@@ -30,6 +33,10 @@ public class Main {
                 seed = Long.parseLong(args[++i]);
             } else if (args[i].equals("--help")) {
                 new GameView(false, scanner).showHelp();
+                System.out.println("  --report        Show game history report");
+                return;
+            } else if (args[i].equals("--report")) {
+                showReport();
                 return;
             }
         }
@@ -43,16 +50,58 @@ public class Main {
             return;
         }
 
+        repo = new persistence.GameRepository();
+        dbPlayers = new ArrayList<>();
+        for (String name : gs.getPlayerNames()) {
+            dbPlayers.add(repo.getOrCreatePlayer(name));
+        }
+        dbGame = repo.createGame();
+
         for (int g = 1; g <= games; g++) {
             log.info("Starting game {} of {}", g, games);
             view.showGameHeader(g);
-            playGame();
+            playGame(g);
         }
 
         view.showFinalScores(gs.getPlayerNames(), gs.getScores());
+
+        persistence.Player overallWinner = null;
+        int maxScore = -1;
+        for (int i = 0; i < gs.getPlayerCount(); i++) {
+            if (gs.getScores()[i] > maxScore) {
+                maxScore = gs.getScores()[i];
+                overallWinner = dbPlayers.get(i);
+            }
+        }
+        repo.finishGame(dbGame, overallWinner);
+        repo.close();
     }
 
-    static void playGame() {
+    static void showReport() {
+        System.out.println("=== UNO Game Report ===");
+        persistence.GameRepository reportRepo = new persistence.GameRepository();
+        
+        System.out.println("\n--- Recent Games ---");
+        for (persistence.Game g : reportRepo.getRecentGames(5)) {
+            String winnerName = (g.getWinner() != null) ? g.getWinner().getName() : "None";
+            System.out.printf("Game %d | Start: %s | Winner: %s%n", g.getId(), g.getStartTime(), winnerName);
+        }
+
+        System.out.println("\n--- Player Win Counts ---");
+        for (Object[] row : reportRepo.getPlayerWinCounts()) {
+            System.out.printf("%s: %s wins%n", row[0], row[1]);
+        }
+
+        System.out.println("\n--- Highest Single-Round Scores ---");
+        for (Object[] row : reportRepo.getHighestScores(5)) {
+            System.out.printf("%s: %s points%n", row[0], row[1]);
+        }
+        
+        reportRepo.close();
+    }
+
+    static void playGame(int roundNumber) {
+        persistence.Round dbRound = repo.createRound(dbGame, roundNumber);
         gs.buildDeck();
         gs.dealHands();
         gs.setUpCard(gs.draw());
@@ -139,6 +188,13 @@ public class Main {
                     gs.addScore(gs.getCurrentPlayer(), points);
                     log.info("{} won the game with {} points!", name, points);
                     view.showWin(name, points);
+
+                    persistence.Player roundWinner = dbPlayers.get(gs.getCurrentPlayer());
+                    repo.finishRound(dbRound, roundWinner);
+                    for (int i = 0; i < dbPlayers.size(); i++) {
+                        int roundScore = (i == gs.getCurrentPlayer()) ? points : 0;
+                        repo.saveScore(dbRound, dbPlayers.get(i), roundScore);
+                    }
                     return;
                 }
 
@@ -148,6 +204,10 @@ public class Main {
             }
         }
         view.showSafetyLimit();
+        repo.finishRound(dbRound, null);
+        for (int i = 0; i < dbPlayers.size(); i++) {
+            repo.saveScore(dbRound, dbPlayers.get(i), 0);
+        }
     }
 
     static void applyCardEffect(String card) {
