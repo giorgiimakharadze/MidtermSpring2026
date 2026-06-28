@@ -118,6 +118,7 @@ public class Main {
             String name = gs.currentPlayerName();
             ArrayList<String> hand = gs.currentHand();
 
+            log.info("Turn started for player: {}", name);
             view.showTurnState(gs.getUpCard(), gs.getCalledColor(), name, hand);
 
             int chosen = -1;
@@ -145,6 +146,7 @@ public class Main {
 
             if (chosen >= 0) {
                 if (chosen >= hand.size()) {
+                    log.warn("{} entered an invalid card index", name);
                     view.showInvalidIndex(name);
                     hand.add(gs.draw());
                     gs.next();
@@ -155,6 +157,7 @@ public class Main {
                 boolean ok = CardRules.isLegal(card, gs.getUpCard(), gs.getCalledColor());
 
                 if (!ok) {
+                    log.warn("{} attempted to play an illegal card: {}", name, card);
                     view.showPenalty(name, card);
                     hand.add(gs.draw());
                     gs.next();
@@ -226,6 +229,7 @@ public class Main {
             gs.next();
             gs.currentHand().add(gs.draw());
             gs.currentHand().add(gs.draw());
+            log.info("{} is forced to draw two cards", gs.currentPlayerName());
             view.showDrawTwo(gs.currentPlayerName());
             gs.next();
         } else if (CardRules.rank(card).equals("WILD_DRAW_FOUR")) {
@@ -233,6 +237,7 @@ public class Main {
             for (int i = 0; i < 4; i++) {
                 gs.currentHand().add(gs.draw());
             }
+            log.info("{} is forced to draw four cards", gs.currentPlayerName());
             view.showDrawFour(gs.currentPlayerName());
             gs.next();
         } else {
