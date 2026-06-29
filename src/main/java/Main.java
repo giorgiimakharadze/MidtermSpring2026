@@ -6,25 +6,23 @@ import org.slf4j.LoggerFactory;
 
 public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
-    static GameState gs = new GameState();
-    static boolean quiet = false;
     static Scanner scanner = new Scanner(System.in);
-    static GameView view;
-    static persistence.GameRepository repo;
-    static persistence.Game dbGame;
-    static ArrayList<persistence.Player> dbPlayers;
 
     public static void main(String[] args) {
         int bots = 3;
-        int games = 1;
+        int maxRounds = 100;
         boolean human = false;
+        boolean quiet = false;
         long seed = System.currentTimeMillis();
+        int targetScore = 500;
 
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--bots") && i + 1 < args.length) {
                 bots = Integer.parseInt(args[++i]);
             } else if (args[i].equals("--games") && i + 1 < args.length) {
-                games = Integer.parseInt(args[++i]);
+                maxRounds = Integer.parseInt(args[++i]);
+            } else if (args[i].equals("--target") && i + 1 < args.length) {
+                targetScore = Integer.parseInt(args[++i]);
             } else if (args[i].equals("--human")) {
                 human = true;
             } else if (args[i].equals("--quiet")) {
@@ -32,8 +30,7 @@ public class Main {
             } else if (args[i].equals("--seed") && i + 1 < args.length) {
                 seed = Long.parseLong(args[++i]);
             } else if (args[i].equals("--help")) {
-                new GameView(false, scanner).showHelp();
-                System.out.println("  --report        Show game history report");
+                showHelp();
                 return;
             } else if (args[i].equals("--report")) {
                 showReport();
@@ -41,46 +38,74 @@ public class Main {
             }
         }
 
+        GameState gs = new GameState();
         gs.setRandom(new Random(seed));
-        view = new GameView(quiet, scanner);
         gs.setupPlayers(bots, human);
 
         if (gs.getPlayerCount() < 2 || gs.getPlayerCount() > 4) {
-            view.showPlayerCount();
+            System.out.println("UNO needs 2 to 4 players.");
             return;
         }
 
-        repo = new persistence.GameRepository();
-        dbPlayers = new ArrayList<>();
+        // Build controllers
+        PlayerController[] controllers = new PlayerController[gs.getPlayerCount()];
+        for (int i = 0; i < gs.getPlayerCount(); i++) {
+            if (gs.isHuman(i)) {
+                controllers[i] = new HumanController(scanner);
+            } else {
+                controllers[i] = new BotController();
+            }
+        }
+
+        // Build event listener
+        ConsoleEventListener listener = new ConsoleEventListener(quiet);
+
+        // Build and run engine
+        GameEngine engine = new GameEngine(gs, controllers, listener);
+
+        // Persistence setup
+        persistence.GameRepository repo = new persistence.GameRepository();
+        ArrayList<persistence.Player> dbPlayers = new ArrayList<>();
         for (String name : gs.getPlayerNames()) {
             dbPlayers.add(repo.getOrCreatePlayer(name));
         }
-        dbGame = repo.createGame();
+        persistence.Game dbGame = repo.createGame();
 
-        for (int g = 1; g <= games; g++) {
-            log.info("Starting game {} of {}", g, games);
-            view.showGameHeader(g);
-            playGame(g);
-        }
+        // Play game with target score
+        log.info("Starting game with target score {} and max {} rounds", targetScore, maxRounds);
+        int overallWinner = engine.playGame(targetScore, maxRounds);
 
-        view.showFinalScores(gs.getPlayerNames(), gs.getScores());
-
-        persistence.Player overallWinner = null;
-        int maxScore = -1;
-        for (int i = 0; i < gs.getPlayerCount(); i++) {
-            if (gs.getScores()[i] > maxScore) {
-                maxScore = gs.getScores()[i];
-                overallWinner = dbPlayers.get(i);
-            }
-        }
-        repo.finishGame(dbGame, overallWinner);
+        // Persist results
+        persistence.Player winner = dbPlayers.get(overallWinner);
+        repo.finishGame(dbGame, winner);
         repo.close();
+    }
+
+    static void showHelp() {
+        System.out.println("Usage: java -jar uno-game.jar [options]");
+        System.out.println("  --bots N        Number of bot players (default: 3)");
+        System.out.println("  --games N       Maximum number of rounds (default: 100)");
+        System.out.println("  --target N      Target score to win (default: 500)");
+        System.out.println("  --human         Add a human player");
+        System.out.println("  --quiet         Suppress game output");
+        System.out.println("  --seed N        Random seed for reproducibility");
+        System.out.println("  --report        Show game history report");
+        System.out.println("  --help          Show this help");
+        System.out.println();
+        System.out.println("Card input examples:");
+        System.out.println("  R5   red 5");
+        System.out.println("  YS   yellow skip");
+        System.out.println("  BR   blue reverse");
+        System.out.println("  G+2  green draw two");
+        System.out.println("  W    wild");
+        System.out.println("  W4   wild draw four");
+        System.out.println("  draw draw a card");
     }
 
     static void showReport() {
         System.out.println("=== UNO Game Report ===");
         persistence.GameRepository reportRepo = new persistence.GameRepository();
-        
+
         System.out.println("\n--- Recent Games ---");
         for (persistence.Game g : reportRepo.getRecentGames(5)) {
             String winnerName = (g.getWinner() != null) ? g.getWinner().getName() : "None";
@@ -96,152 +121,7 @@ public class Main {
         for (Object[] row : reportRepo.getHighestScores(5)) {
             System.out.printf("%s: %s points%n", row[0], row[1]);
         }
-        
+
         reportRepo.close();
-    }
-
-    static void playGame(int roundNumber) {
-        persistence.Round dbRound = repo.createRound(dbGame, roundNumber);
-        gs.buildDeck();
-        gs.dealHands();
-        gs.setUpCard(gs.draw());
-        while (gs.getUpCard().startsWith("W")) {
-            gs.addToDiscard(gs.getUpCard());
-            gs.setUpCard(gs.draw());
-        }
-        gs.setCalledColor("");
-        gs.resetForNewGame();
-
-        int guard = 0;
-        while (guard < 3000) {
-            guard++;
-            String name = gs.currentPlayerName();
-            ArrayList<String> hand = gs.currentHand();
-
-            log.info("Turn started for player: {}", name);
-            view.showTurnState(gs.getUpCard(), gs.getCalledColor(), name, hand);
-
-            int chosen = -1;
-            if (gs.isCurrentPlayerHuman()) {
-                chosen = view.askHumanCard(hand, gs.getUpCard(), gs.getCalledColor());
-            } else {
-                chosen = BotStrategy.chooseCard(hand, gs.getUpCard(), gs.getCalledColor());
-            }
-
-            if (chosen == -1) {
-                String drawn = gs.draw();
-                hand.add(drawn);
-                log.info("{} drew a card", name);
-                view.showDraw(name, drawn);
-                if (CardRules.isLegal(drawn, gs.getUpCard(), gs.getCalledColor())) {
-                    if (!gs.isCurrentPlayerHuman()) {
-                        chosen = hand.size() - 1;
-                    } else {
-                        if (view.askPlayDrawnCard(drawn)) {
-                            chosen = hand.size() - 1;
-                        }
-                    }
-                }
-            }
-
-            if (chosen >= 0) {
-                if (chosen >= hand.size()) {
-                    log.warn("{} entered an invalid card index", name);
-                    view.showInvalidIndex(name);
-                    hand.add(gs.draw());
-                    gs.next();
-                    continue;
-                }
-
-                String card = hand.get(chosen);
-                boolean ok = CardRules.isLegal(card, gs.getUpCard(), gs.getCalledColor());
-
-                if (!ok) {
-                    log.warn("{} attempted to play an illegal card: {}", name, card);
-                    view.showPenalty(name, card);
-                    hand.add(gs.draw());
-                    gs.next();
-                    continue;
-                }
-
-                hand.remove(chosen);
-                gs.addToDiscard(gs.getUpCard());
-                gs.setUpCard(card);
-                gs.setCalledColor("");
-                log.info("{} played {}", name, card);
-                view.showPlay(name, card);
-
-                if (card.equals("W") || card.equals("W4")) {
-                    if (gs.isCurrentPlayerHuman()) {
-                        gs.setCalledColor(view.askColor());
-                    } else {
-                        gs.setCalledColor(BotStrategy.chooseColor(hand));
-                    }
-                    log.info("{} called color {}", name, gs.getCalledColor());
-                    view.showColorCall(name, gs.getCalledColor());
-                }
-
-                if (hand.size() == 1) {
-                    log.info("{} called UNO!", name);
-                    view.showUno(name);
-                }
-
-                if (hand.size() == 0) {
-                    int points = gs.calculateScore();
-                    gs.addScore(gs.getCurrentPlayer(), points);
-                    log.info("{} won the game with {} points!", name, points);
-                    view.showWin(name, points);
-
-                    persistence.Player roundWinner = dbPlayers.get(gs.getCurrentPlayer());
-                    repo.finishRound(dbRound, roundWinner);
-                    for (int i = 0; i < dbPlayers.size(); i++) {
-                        int roundScore = (i == gs.getCurrentPlayer()) ? points : 0;
-                        repo.saveScore(dbRound, dbPlayers.get(i), roundScore);
-                    }
-                    return;
-                }
-
-                applyCardEffect(card);
-            } else {
-                gs.next();
-            }
-        }
-        view.showSafetyLimit();
-        repo.finishRound(dbRound, null);
-        for (int i = 0; i < dbPlayers.size(); i++) {
-            repo.saveScore(dbRound, dbPlayers.get(i), 0);
-        }
-    }
-
-    static void applyCardEffect(String card) {
-        if (CardRules.rank(card).equals("SKIP")) {
-            gs.next();
-            gs.next();
-        } else if (CardRules.rank(card).equals("REVERSE")) {
-            gs.reverseDirection();
-            if (gs.getPlayerCount() == 2) {
-                gs.next();
-                gs.next();
-            } else {
-                gs.next();
-            }
-        } else if (CardRules.rank(card).equals("DRAW_TWO")) {
-            gs.next();
-            gs.currentHand().add(gs.draw());
-            gs.currentHand().add(gs.draw());
-            log.info("{} is forced to draw two cards", gs.currentPlayerName());
-            view.showDrawTwo(gs.currentPlayerName());
-            gs.next();
-        } else if (CardRules.rank(card).equals("WILD_DRAW_FOUR")) {
-            gs.next();
-            for (int i = 0; i < 4; i++) {
-                gs.currentHand().add(gs.draw());
-            }
-            log.info("{} is forced to draw four cards", gs.currentPlayerName());
-            view.showDrawFour(gs.currentPlayerName());
-            gs.next();
-        } else {
-            gs.next();
-        }
     }
 }

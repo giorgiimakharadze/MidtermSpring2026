@@ -1,7 +1,7 @@
 // Centralizes all card-related rules and utility methods.
 public class CardRules {
 
-    static String color(String card) {
+    public static String color(String card) {
         if (card.startsWith("R")) {
             return "R";
         }
@@ -17,7 +17,7 @@ public class CardRules {
         return "";
     }
 
-    static String rank(String card) {
+    public static String rank(String card) {
         if (card.equals("W")) {
             return "WILD";
         }
@@ -36,14 +36,14 @@ public class CardRules {
         return "NUMBER";
     }
 
-    static int number(String card) {
+    public static int number(String card) {
         if (rank(card).equals("NUMBER")) {
             return Integer.parseInt(card.substring(1));
         }
         return -1;
     }
 
-    static int points(String card) {
+    public static int points(String card) {
         String r = rank(card);
         if (r.equals("NUMBER")) {
             return number(card);
@@ -57,7 +57,7 @@ public class CardRules {
         return 0;
     }
 
-    static boolean isLegal(String card, String up, String call) {
+    public static boolean isLegal(String card, String up, String call) {
         if (card.startsWith("W")) {
             return true;
         }

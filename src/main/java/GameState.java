@@ -16,96 +16,96 @@ public class GameState {
     private String calledColor = "";
     private Random random = new Random();
 
-    int getPlayerCount() {
+    public int getPlayerCount() {
         return playerNames.size();
     }
 
-    String getPlayerName(int index) {
+    public String getPlayerName(int index) {
         return playerNames.get(index);
     }
 
-    boolean isHuman(int index) {
+    public boolean isHuman(int index) {
         return humanPlayers.get(index).booleanValue();
     }
 
-    ArrayList<String> getPlayerNames() {
+    public ArrayList<String> getPlayerNames() {
         return playerNames;
     }
 
-    int getCurrentPlayer() {
+    public int getCurrentPlayer() {
         return currentPlayer;
     }
 
-    String currentPlayerName() {
+    public String currentPlayerName() {
         return playerNames.get(currentPlayer);
     }
 
-    ArrayList<String> currentHand() {
+    public ArrayList<String> currentHand() {
         return hands.get(currentPlayer);
     }
 
-    boolean isCurrentPlayerHuman() {
+    public boolean isCurrentPlayerHuman() {
         return humanPlayers.get(currentPlayer).booleanValue();
     }
 
-    String getUpCard() {
+    public String getUpCard() {
         return upCard;
     }
 
-    void setUpCard(String card) {
+    public void setUpCard(String card) {
         this.upCard = card;
     }
 
-    String getCalledColor() {
+    public String getCalledColor() {
         return calledColor;
     }
 
-    void setCalledColor(String color) {
+    public void setCalledColor(String color) {
         this.calledColor = color;
     }
 
-    int getDirection() {
+    public int getDirection() {
         return direction;
     }
 
-    void reverseDirection() {
+    public void reverseDirection() {
         direction = direction * -1;
     }
 
-    int[] getScores() {
+    public int[] getScores() {
         return scores;
     }
 
-    void addScore(int player, int points) {
+    public void addScore(int player, int points) {
         scores[player] += points;
     }
 
-    ArrayList<String> getHand(int index) {
+    public ArrayList<String> getHand(int index) {
         return hands.get(index);
     }
 
-    void setRandom(Random r) {
+    public void setRandom(Random r) {
         this.random = r;
     }
 
-    int randomPlayerIndex() {
+    public int randomPlayerIndex() {
         return random.nextInt(playerNames.size());
     }
 
-    void resetForNewGame() {
+    public void resetForNewGame() {
         direction = 1;
         currentPlayer = random.nextInt(playerNames.size());
     }
 
-    void addToDeck(String card) {
+    public void addToDeck(String card) {
         deck.add(card);
     }
 
-    void addToDiscard(String card) {
+    public void addToDiscard(String card) {
         discard.add(card);
     }
 
-    void setupPlayers(int bots, boolean human) {
+    public void setupPlayers(int bots, boolean human) {
         playerNames.clear();
         humanPlayers.clear();
         hands.clear();
@@ -121,13 +121,13 @@ public class GameState {
         }
     }
 
-    void addPlayer(String name, boolean isHuman) {
+    public void addPlayer(String name, boolean isHuman) {
         playerNames.add(name);
         humanPlayers.add(isHuman);
         hands.add(new ArrayList<String>());
     }
 
-    void buildDeck() {
+    public void buildDeck() {
         deck.clear();
         String[] colors = { "R", "Y", "G", "B" };
         for (int c = 0; c < colors.length; c++) {
@@ -151,7 +151,7 @@ public class GameState {
         discard.clear();
     }
 
-    void dealHands() {
+    public void dealHands() {
         for (int i = 0; i < hands.size(); i++) {
             hands.get(i).clear();
         }
@@ -162,7 +162,7 @@ public class GameState {
         }
     }
 
-    String draw() {
+    public String draw() {
         if (deck.size() == 0) {
             deck.addAll(discard);
             discard.clear();
@@ -174,7 +174,7 @@ public class GameState {
         return deck.remove(0);
     }
 
-    void next() {
+    public void next() {
         currentPlayer += direction;
         if (currentPlayer >= playerNames.size()) {
             currentPlayer = 0;
@@ -184,7 +184,7 @@ public class GameState {
         }
     }
 
-    int calculateScore() {
+    public int calculateScore() {
         int points = 0;
         for (int i = 0; i < hands.size(); i++) {
             if (i != currentPlayer) {
@@ -194,5 +194,9 @@ public class GameState {
             }
         }
         return points;
+    }
+
+    public int getDeckSize() {
+        return deck.size();
     }
 }

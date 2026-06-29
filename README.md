@@ -2,7 +2,7 @@
 
 This is a standalone CLI UNO-like game.
 
-The code is written as plausible feature-grown Java: almost everything lives in one procedural `Main` class. It works, but it has mixed responsibilities, duplicated rule logic, primitive-heavy card handling, global state, and condition-heavy gameplay code. The goal is to refactor it safely, not rewrite it.
+The code has been refactored into a `GameEngine` architecture that separates game logic from CLI interaction. Rules and game state are completely testable without any console dependencies, via the `PlayerController` and `GameEventListener` interfaces.
 
 ## Build and Package
 
@@ -26,10 +26,10 @@ mvn test
 
 Once packaged, you can run the executable JAR:
 
-### Run Bot Games
+### Run Bot Games to a Target Score
 
 ```bash
-java -jar target/uno-game-1.0-SNAPSHOT-jar-with-dependencies.jar --bots 3 --games 5 --quiet
+java -jar target/uno-game-1.0-SNAPSHOT-jar-with-dependencies.jar --bots 3 --target 500 --quiet
 ```
 
 ### Run Interactive Game
@@ -74,9 +74,11 @@ docker run -it uno-game --human --bots 2 --games 1
 docker run -it uno-game --bots 3 --games 5
 ```
 
-## Rules
+## Documentation
 
-See `docs/rules.html` for the implemented game rules.
+* `docs/rules-supported.md`: Details of implemented UNO rules and variants.
+* `docs/final-report.md`: Project summary report covering architecture, testing, and limitations.
+* `docs/rules.html`: Original basic rules.
 
 ## Persistence
 
