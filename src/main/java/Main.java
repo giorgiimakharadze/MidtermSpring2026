@@ -57,12 +57,6 @@ public class Main {
             }
         }
 
-        // Build event listener
-        ConsoleEventListener listener = new ConsoleEventListener(quiet);
-
-        // Build and run engine
-        GameEngine engine = new GameEngine(gs, controllers, listener);
-
         // Persistence setup
         persistence.GameRepository repo = new persistence.GameRepository();
         ArrayList<persistence.Player> dbPlayers = new ArrayList<>();
@@ -70,6 +64,44 @@ public class Main {
             dbPlayers.add(repo.getOrCreatePlayer(name));
         }
         persistence.Game dbGame = repo.createGame();
+
+        // Build event listener
+        ConsoleEventListener listener = new ConsoleEventListener(quiet) {
+            private persistence.Round currentRound;
+
+            @Override
+            public void onRoundStart(int roundNumber) {
+                super.onRoundStart(roundNumber);
+                currentRound = repo.createRound(dbGame, roundNumber);
+            }
+
+            @Override
+            public void onRoundEnd(String winnerName, int points) {
+                super.onRoundEnd(winnerName, points);
+                persistence.Player roundWinner = null;
+                for (persistence.Player p : dbPlayers) {
+                    if (p.getName().equals(winnerName)) {
+                        roundWinner = p;
+                        break;
+                    }
+                }
+                repo.finishRound(currentRound, roundWinner);
+                if (roundWinner != null) {
+                    repo.saveScore(currentRound, roundWinner, points);
+                }
+            }
+
+            @Override
+            public void onSafetyLimit() {
+                super.onSafetyLimit();
+                if (currentRound != null) {
+                    repo.finishRound(currentRound, null);
+                }
+            }
+        };
+
+        // Build and run engine
+        GameEngine engine = new GameEngine(gs, controllers, listener);
 
         // Play game with target score
         log.info("Starting game with target score {} and max {} rounds", targetScore, maxRounds);
